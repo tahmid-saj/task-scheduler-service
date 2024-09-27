@@ -9,6 +9,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/aws/aws-sdk-go-v2/service/ec2/types"
+	"github.com/aws/aws-sdk-go/aws/awserr"
 )
 
 type Tag struct {
@@ -109,4 +110,140 @@ func DescribeInstance(instanceIDs []string) (string, error) {
 	} else {
 		return fmt.Sprint("Success", result), nil
 	}
+}
+
+func StartInstance(instanceID string) ([]types.InstanceStateChange, error) {
+	// Load the default AWS config
+	cfg, err := config.LoadDefaultConfig(context.TODO())
+	if err != nil {
+		log.Print(err)
+		return nil, fmt.Errorf("unable to load SDK config: %v", err)
+	}
+
+	// Create EC2 client
+	ec2Client := ec2.NewFromConfig(cfg)
+
+	// start the instance
+	input := &ec2.StartInstancesInput{
+		InstanceIds: []string{instanceID,},
+		DryRun: aws.Bool(true),
+	}
+
+	result, err := ec2Client.StartInstances(context.TODO(), &ec2.StartInstancesInput{
+		InstanceIds: input.InstanceIds,
+	})
+	if err != nil {
+		log.Print(err)
+		return nil, err
+	}
+
+	awsErr, ok := err.(awserr.Error)
+
+	if ok && awsErr.Code() == "DryRunOperation" {
+		// Let's now set dry run to be false. This will allow us to start the instances
+		input.DryRun = aws.Bool(false)
+		result, err = ec2Client.StartInstances(context.TODO(), &ec2.StartInstancesInput{
+			InstanceIds: input.InstanceIds,
+			DryRun: input.DryRun,
+		})
+		if err != nil {
+			log.Print(err)
+			return nil, err
+		} else {
+			fmt.Println("Success", result.StartingInstances)
+		}
+	} else { // This could be due to a lack of permissions
+		log.Print(err)
+		return nil, err
+	}
+
+	return result.StartingInstances, nil
+}
+
+func StopInstance(instanceID string) ([]types.InstanceStateChange, error) {
+	// Load the default AWS config
+	cfg, err := config.LoadDefaultConfig(context.TODO())
+	if err != nil {
+		log.Print(err)
+		return nil, fmt.Errorf("unable to load SDK config: %v", err)
+	}
+
+	// Create EC2 client
+	ec2Client := ec2.NewFromConfig(cfg)
+
+	// start the instance
+	input := &ec2.StopInstancesInput{
+		InstanceIds: []string{instanceID,},
+		DryRun: aws.Bool(true),
+	}
+
+	result, err := ec2Client.StopInstances(context.TODO(), &ec2.StopInstancesInput{
+		InstanceIds: input.InstanceIds,
+	})
+	if err != nil {
+		log.Print(err)
+		return nil, err
+	}
+
+	awsErr, ok := err.(awserr.Error)
+
+	if ok && awsErr.Code() == "DryRunOperation" {
+		// Let's now set dry run to be false. This will allow us to start the instances
+		input.DryRun = aws.Bool(false)
+		result, err = ec2Client.StopInstances(context.TODO(), &ec2.StopInstancesInput{
+			InstanceIds: input.InstanceIds,
+			DryRun: input.DryRun,
+		})
+		if err != nil {
+			log.Print(err)
+			return nil, err
+		} else {
+			fmt.Println("Success", result.StoppingInstances)
+		}
+	} else { // This could be due to a lack of permissions
+		log.Print(err)
+		return nil, err
+	}
+
+	return result.StoppingInstances, nil
+}
+
+func RebootInstance(instanceID string) (*ec2.RebootInstancesOutput, error) {
+	// Load the default AWS config
+	cfg, err := config.LoadDefaultConfig(context.TODO())
+	if err != nil {
+		log.Print(err)
+		return nil, err
+	}
+
+	// Create EC2 client
+	ec2Client := ec2.NewFromConfig(cfg)
+
+	input := &ec2.RebootInstancesInput{
+		InstanceIds: []string{instanceID},
+		DryRun: aws.Bool(true),
+	}
+	result, err := ec2Client.RebootInstances(context.TODO(), &ec2.RebootInstancesInput{
+		InstanceIds: input.InstanceIds,
+	})
+	awsErr, ok := err.(awserr.Error)
+
+	if ok && awsErr.Code() == "DryRunOperation" {
+		input.DryRun = aws.Bool(false)
+		result, err = ec2Client.RebootInstances(context.TODO(), &ec2.RebootInstancesInput{
+			InstanceIds: input.InstanceIds,
+			DryRun: input.DryRun,
+		})
+		if err != nil {
+			log.Print(err)
+			return nil, err
+		} else {
+			fmt.Println("Success", result)
+		}
+	} else { // This could be due to a lack of permissions
+		log.Print(err)
+		return nil, err
+	}
+
+	return result, nil
 }
