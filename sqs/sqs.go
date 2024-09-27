@@ -2,6 +2,7 @@ package sqs
 
 import (
 	"log"
+	"strconv"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -27,7 +28,7 @@ func ListQueues() ([]*string, error) {
 	return resQueueUrls, nil
 }
 
-func CreateQueue(queueName string) (*string, error) {
+func CreateQueue(queueName string) (*sqs.CreateQueueOutput, error) {
 	sess := session.Must(session.NewSessionWithOptions(session.Options{
     SharedConfigState: session.SharedConfigEnable,
 	}))
@@ -46,7 +47,7 @@ func CreateQueue(queueName string) (*string, error) {
 		return nil, err
 	}
 
-	return result.QueueUrl, nil
+	return result, nil
 }
 
 func GetURLOfQueue(queueName string) (*string, error) {
@@ -171,4 +172,98 @@ func DeleteMessage(queueURL, receiptHandle string) (bool, error) {
 	}
 
 	return true, nil
+}
+
+func CreateQueueEnableLongPolling(queueName string, waitTime int64) (*sqs.CreateQueueOutput, error) {
+	if waitTime < 1 { waitTime = 1 }
+	if waitTime > 20 { waitTime = 20 }
+
+	sess := session.Must(session.NewSessionWithOptions(session.Options{
+    SharedConfigState: session.SharedConfigEnable,
+	}))
+
+	svc := sqs.New(sess)
+
+	result, err := svc.CreateQueue(&sqs.CreateQueueInput{
+		QueueName: &queueName,
+		Attributes: aws.StringMap(map[string]string{
+			"ReceiveMessageWaitTimeSeconds": strconv.Itoa(int(waitTime)),
+		}),
+	})
+	if err != nil {
+		log.Print(err)
+		return nil, err
+	}
+
+	return result, nil
+}
+
+func EnableLongPollingOnQueue(queueName string, waitTime int) (*sqs.SetQueueAttributesOutput, error) {
+	if waitTime < 1 { waitTime = 1 }
+	if waitTime > 20 { waitTime = 20 }
+
+	sess := session.Must(session.NewSessionWithOptions(session.Options{
+    SharedConfigState: session.SharedConfigEnable,
+	}))
+
+	svc := sqs.New(sess)
+
+	result, err := svc.GetQueueUrl(&sqs.GetQueueUrlInput{
+		QueueName: &queueName,
+	})
+	if err != nil {
+		log.Print(err)
+		return nil, err
+	}
+
+	queueURL := result.QueueUrl
+	updatedQueueOutput, err := svc.SetQueueAttributes(&sqs.SetQueueAttributesInput{
+    QueueUrl: queueURL,
+    Attributes: aws.StringMap(map[string]string{
+        "ReceiveMessageWaitTimeSeconds": strconv.Itoa(aws.IntValue(&waitTime)),
+    }),
+	})
+	if err != nil {
+		log.Print(err)
+		return nil, err
+	}
+
+	return updatedQueueOutput, nil
+}
+
+func EnableLongPollingOnMessageReceipt(queueName string, waitTime int) (*sqs.ReceiveMessageOutput, error) {
+	if waitTime < 1 { waitTime = 1 }
+	if waitTime > 20 { waitTime = 20 }
+
+	sess := session.Must(session.NewSessionWithOptions(session.Options{
+    SharedConfigState: session.SharedConfigEnable,
+	}))
+
+	svc := sqs.New(sess)
+
+	queueURL, err := svc.GetQueueUrl(&sqs.GetQueueUrlInput{
+    QueueName: aws.String(queueName),
+	})
+	if err != nil {
+		log.Print(err)
+		return nil, err
+	}
+
+	result, err := svc.ReceiveMessage(&sqs.ReceiveMessageInput{
+    QueueUrl: queueURL.QueueUrl,
+    AttributeNames: aws.StringSlice([]string{
+        "SentTimestamp",
+    }),
+    MaxNumberOfMessages: aws.Int64(1),
+    MessageAttributeNames: aws.StringSlice([]string{
+        "All",
+    }),
+    WaitTimeSeconds: aws.Int64(int64(waitTime)),
+	})
+	if err != nil {
+		log.Print(err)
+		return nil, err
+	}
+
+	return result, nil
 }
