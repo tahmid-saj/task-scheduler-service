@@ -9,6 +9,29 @@ Task scheduler service to manage tasks in a set of queues, and assign tasks to a
 
 The directory structure is as follows:
 
+## Directory Structure
+
+- **ec2/**  
+  - Contains scripts and configurations for handling EC2-related tasks.
+  
+- **lambda/**  
+  - Code and configurations to manage AWS Lambda functions, triggering background jobs.
+
+- **sqs/**  
+  - Manages task queues using AWS SQS (Simple Queue Service).
+
+- **main.go**  
+  - Entry point for the Go application, managing task scheduling and execution logic.
+
+- **go.mod**  
+  - Go module dependencies and project metadata.
+
+- **README.md**  
+  - Project overview and instructions.
+
+- **.gitignore**  
+  - Files to be ignored by Git version control.
+
 <br/>
 <br/>
 
