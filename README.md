@@ -9,8 +9,6 @@ Task scheduler service to manage tasks in a set of queues, and assign tasks to a
 
 The directory structure is as follows:
 
-## Directory Structure
-
 - **ec2/**  
   - Contains scripts and configurations for handling EC2-related tasks.
   
